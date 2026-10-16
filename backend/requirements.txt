@@ -1,0 +1,10 @@
+Flask
+Werkzeug
+opencv-python
+ultralytics
+mysql-connector-python
+keras-facenet
+numpy
+bcrypt
+reportlab
+APScheduler

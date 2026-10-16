@@ -1,0 +1,324 @@
+{% extends "admin_base.html" %}
+{% block content %}
+
+<div class="employee-wrapper">
+
+    <div class="employee-top">
+        <h1>Employees</h1>
+        <div class="employee-actions">
+            <div class="search-wrapper">
+                <span class="material-icons-sharp search-icon">search</span>
+                <input type="text" id="searchInput" placeholder="Search employee..." class="search-input" onkeyup="searchTable()">
+            </div>
+            <a href="/admin/employees/add" class="btn-primary">
+                <span class="material-icons-sharp" style="font-size:1rem; vertical-align:middle;">add</span>
+                Add Employee
+            </a>
+        </div>
+    </div>
+
+    <div class="employee-table-scroll">
+        <table class="employee-table">
+            <colgroup>
+                <col class="col-number">
+                <col class="col-name">
+                <col class="col-email">
+                <col class="col-phone">
+                <col class="col-department">
+                <col class="col-position">
+                <col class="col-status">
+                <col class="col-action">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Department</th>
+                    <th>Position</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="employeeTableBody">
+                {% for emp in employees %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>
+                        <div class="employee-name-cell">
+                            {% if emp.profile_photo %}
+                                <img class="emp-avatar emp-avatar-img"
+                                    src="{{ emp.profile_photo }}"
+                                    alt="{{ emp.employee_name[0]|upper }}"
+                                    onerror="this.style.display='none';
+                                            this.nextElementSibling.style.display='flex';">
+                                <div class="emp-avatar emp-avatar-initial" style="display:none;">
+                                    {{ emp.employee_name[0]|upper }}
+                                </div>
+                            {% else %}
+                                <div class="emp-avatar emp-avatar-initial">
+                                    {{ emp.employee_name[0]|upper }}
+                                </div>
+                            {% endif %}
+                            <b>{{ emp.employee_name }}</b>
+                        </div>
+                    </td>
+                    </td>
+                    <td class="employee-email">{{ emp.employee_email }}</td>
+                    <td class="employee-phone">{{ emp.employee_phone or '—' }}</td>
+                    <td><span class="dept-badge">{{ emp.department }}</span></td>
+                    <td>{{ emp.position }}</td>
+                    <td>
+                        <span class="status-badge {% if emp.status == 'ACTIVE' %}status-active{% else %}status-inactive{% endif %}">
+                            {{ emp.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-btns">
+                            <a href="/admin/employees/edit/{{ emp.employee_id }}" class="btn-edit" title="Edit">
+                                <span class="material-icons-sharp" style="font-size:0.95rem;">edit</span>
+                            </a>
+                            <a href="/admin/employees/delete/{{ emp.employee_id }}" class="btn-delete" title="Delete"
+                               onclick="return confirm('Delete this employee?')">
+                                <span class="material-icons-sharp" style="font-size:0.95rem;">delete</span>
+                            </a>
+                            <a href="/admin/employees/enroll/{{ emp.employee_id }}" class="btn-enroll" title="Enroll Face">
+                                <span class="material-icons-sharp" style="font-size:0.95rem;">face</span>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination" id="pagination"></div>
+
+</div>
+
+<style>
+/* Search wrapper */
+.search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.search-icon {
+    position: absolute;
+    left: 0.7rem;
+    font-size: 1rem !important;
+    color: var(--color-info-dark);
+    pointer-events: none;
+}
+.search-input {
+    padding: 0.5rem 1rem 0.5rem 2.3rem;
+    width: 240px;
+    border-radius: var(--border-radius-2);
+    border: 1px solid var(--color-light);
+    background: var(--color-white);
+    color: var(--color-dark);
+    font-size: 0.82rem;
+    font-family: poppins, sans-serif;
+    transition: border-color 0.2s;
+}
+.search-input:focus {
+    border-color: var(--color-primary);
+    outline: none;
+}
+
+/* Employee avatar initial */
+.employee-table-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+    border-radius: var(--card-border-radius);
+    box-shadow: var(--box-shadow);
+}
+.employee-table-scroll .employee-table {
+    min-width: 0;
+    width: 100%;
+    box-shadow: none;
+    table-layout: fixed;
+}
+.employee-table .col-number     { width: 4%; }
+.employee-table .col-name       { width: 18%; }
+.employee-table .col-email      { width: 17%; }
+.employee-table .col-phone      { width: 12%; }
+.employee-table .col-department { width: 12%; }
+.employee-table .col-position   { width: 15%; }
+.employee-table .col-status     { width: 9%; }
+.employee-table .col-action     { width: 13%; }
+
+.employee-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
+}
+.employee-name-cell b {
+    overflow-wrap: anywhere;
+}
+.employee-email,
+.employee-phone {
+    white-space: nowrap;
+}
+
+/* Scale the table smoothly for laptop-sized monitors. */
+@media screen and (max-width: 1500px) {
+    .employee-table thead th,
+    .employee-table tbody td {
+        padding-left: 0.55rem;
+        padding-right: 0.55rem;
+        font-size: 0.76rem;
+    }
+    .employee-name-cell {
+        gap: 0.45rem;
+    }
+    .employee-table .emp-avatar {
+        width: 1.8rem;
+        height: 1.8rem;
+    }
+    .employee-table .action-btns {
+        gap: 0.3rem;
+    }
+    .employee-table .action-btns a {
+        padding: 0.3rem 0.42rem;
+    }
+    .employee-table .dept-badge,
+    .employee-table .status-badge {
+        padding-left: 0.45rem;
+        padding-right: 0.45rem;
+        font-size: 0.66rem;
+    }
+}
+
+@media screen and (max-width: 1200px) {
+    main .employee-table th:first-child,
+    main .employee-table th:last-child,
+    main .employee-table td:first-child,
+    main .employee-table td:last-child {
+        display: table-cell;
+    }
+}
+
+.emp-avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.emp-avatar-initial { 
+    background: var(--color-primary); 
+    color: #fff; display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 0.8rem; 
+    font-weight: 600; 
+}
+.emp-avatar-img { 
+    display: block; 
+    object-fit: cover; 
+    border: 2px solid var(--color-light); 
+}
+
+/* Status badge */
+.status-badge {
+    padding: 0.2rem 0.65rem;
+    border-radius: var(--border-radius-2);
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+.status-active {
+    background: rgba(65, 241, 182, 0.15);
+    color: var(--color-success);
+}
+.status-inactive {
+    background: rgba(255, 119, 130, 0.15);
+    color: var(--color-danger);
+}
+
+/* Table row hover */
+.employee-table tbody tr {
+    transition: background 0.15s;
+}
+.employee-table tbody tr:hover {
+    background: var(--color-light);
+}
+
+/* Action buttons — icon style */
+.action-btns a {
+    padding: 0.35rem 0.55rem;
+    border-radius: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-white);
+    transition: opacity 0.2s, transform 0.15s;
+}
+.action-btns a:hover {
+    opacity: 0.82;
+    transform: translateY(-1px);
+}
+</style>
+
+<script>
+/* ---- Search ---- */
+function searchTable() {
+    const input = document.getElementById("searchInput").value.toLowerCase();
+    const rows = document.querySelectorAll("#employeeTableBody tr");
+    rows.forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(input) ? "" : "none";
+    });
+    buildPagination();
+}
+
+/* ---- Simple pagination ---- */
+const ROWS_PER_PAGE = 8;
+let currentPage = 1;
+
+function buildPagination() {
+    const rows = [...document.querySelectorAll("#employeeTableBody tr")].filter(r => r.style.display !== "none");
+    const totalPages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));
+    currentPage = Math.min(currentPage, totalPages);
+
+    rows.forEach((row, i) => {
+        row.style.display = (i >= (currentPage - 1) * ROWS_PER_PAGE && i < currentPage * ROWS_PER_PAGE) ? "" : "none";
+    });
+
+    const pg = document.getElementById("pagination");
+    pg.innerHTML = "";
+
+    const prev = document.createElement("a");
+    prev.href = "#"; prev.textContent = "Previous";
+    if (currentPage === 1) prev.style.opacity = "0.45";
+    prev.onclick = e => { e.preventDefault(); if (currentPage > 1) { currentPage--; buildPagination(); } };
+    pg.appendChild(prev);
+
+    for (let i = 1; i <= totalPages; i++) {
+        const a = document.createElement("a");
+        a.href = "#"; a.textContent = i;
+        if (i === currentPage) a.classList.add("active-page");
+        a.onclick = (e) => { e.preventDefault(); currentPage = i; buildPagination(); };
+        pg.appendChild(a);
+    }
+
+    const next = document.createElement("a");
+    next.href = "#"; next.textContent = "Next";
+    if (currentPage === totalPages) next.style.opacity = "0.45";
+    next.onclick = e => { e.preventDefault(); if (currentPage < totalPages) { currentPage++; buildPagination(); } };
+    pg.appendChild(next);
+}
+
+document.addEventListener("DOMContentLoaded", buildPagination);
+</script>
+
+{% endblock %}

@@ -1,0 +1,512 @@
+{% extends "admin_base.html" %}
+{% block content %}
+
+<div class="employee-wrapper">
+
+    <!-- Page Header -->
+    <div class="employee-top">
+        <div>
+            <h1>Attendance Records</h1>
+            <p style="margin-top:0.3rem; font-size:0.82rem;">Full log of employee clock-in and clock-out activity.</p>
+        </div>
+        <div class="employee-actions">
+            <div class="search-wrapper">
+                <span class="material-icons-sharp search-icon">search</span>
+                <input type="text" id="searchInput" placeholder="Search employee or status..." class="search-input" onkeyup="searchTable()">
+            </div>
+            <!-- Filter by status -->
+            <select id="statusFilter" class="filter-select" onchange="searchTable()">
+                <option value="">All Status</option>
+                <option value="PRESENT">Present</option>
+                <option value="LATE">Late</option>
+                <option value="ABSENT">Absent</option>
+            </select>
+            <!-- Date filter -->
+            <div class="date-filter-wrap">
+                <span class="material-icons-sharp date-filter-icon">calendar_today</span>
+                <input type="date" id="dateFilter" class="filter-select date-filter-input" onchange="searchTable()" title="Filter by date">
+                <button class="date-clear-btn" id="dateClearBtn" onclick="clearDate()" title="Clear date filter" style="display:none;">
+                    <span class="material-icons-sharp">close</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary strip -->
+    <div class="attendance-summary">
+        <div class="summary-item">
+            <span class="material-icons-sharp summary-icon" style="color: var(--color-primary);">group</span>
+            <div>
+                <small class="text-muted">Total Records</small>
+                <b id="totalCount">{{ records | length }}</b>
+            </div>
+        </div>
+        <div class="summary-item">
+            <span class="material-icons-sharp summary-icon" style="color: var(--color-success);">check_circle</span>
+            <div>
+                <small class="text-muted">Present</small>
+                <b id="presentCount">{{ records | selectattr('attendance_status', 'equalto', 'PRESENT') | list | length }}</b>
+            </div>
+        </div>
+        <div class="summary-item">
+            <span class="material-icons-sharp summary-icon" style="color: var(--color-warning);">schedule</span>
+            <div>
+                <small class="text-muted">Late</small>
+                <b id="lateCount">{{ records | selectattr('attendance_status', 'equalto', 'LATE') | list | length }}</b>
+            </div>
+        </div>
+        <div class="summary-item">
+            <span class="material-icons-sharp summary-icon" style="color: var(--color-danger);">cancel</span>
+            <div>
+                <small class="text-muted">Absent</small>
+                <b id="absentCount">{{ records | selectattr('attendance_status', 'equalto', 'ABSENT') | list | length }}</b>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <table class="employee-table attendance-tbl">
+        <thead>
+            <tr>
+                <th style="width:4%;">#</th>
+                <th style="width:16%;">Employee</th>
+                <th style="width:10%;" class="sortable-th" onclick="sortByCol(2)" id="th-date">
+                    Date <span class="sort-icon" id="sort-date">↕</span>
+                </th>
+                <th style="width:9%;" class="sortable-th" onclick="sortByCol(3)" id="th-clockin">
+                    Clock In <span class="sort-icon" id="sort-clockin">↕</span>
+                </th>
+                <th style="width:9%;" class="sortable-th" onclick="sortByCol(4)" id="th-clockout">
+                    Clock Out <span class="sort-icon" id="sort-clockout">↕</span>
+                </th>
+                <th style="width:9%;">Status</th>
+                <th style="width:28%;">Match Info</th>
+                <th style="width:11%;">Distance</th>
+                <th style="width:4%;">ID</th>
+            </tr>
+        </thead>
+        <tbody id="attendanceBody">
+            {% for r in records %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>
+                    <div style="display:flex; align-items:center; gap:0.7rem;">
+                        {% if r.profile_photo %}
+                            <img class="emp-avatar att-avatar att-avatar-img"
+                                src="{{ r.profile_photo }}"
+                                alt="{{ r.employee_name[0] | upper }}"
+                                onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                            <div class="emp-avatar att-avatar" style="display:none;">{{ r.employee_name[0] | upper }}</div>
+                        {% else %}
+                            <div class="emp-avatar att-avatar">{{ r.employee_name[0] | upper }}</div>
+                        {% endif %}
+                        <b style="font-size:0.82rem;">{{ r.employee_name }}</b>
+                    </div>
+                </td>
+                <td>
+                    <span class="date-chip">{{ r.attendance_date }}</span>
+                </td>
+                <td>
+                    {% if r.clock_in_time %}
+                        <span class="time-chip time-in">{{ r.clock_in_time }}</span>
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if r.clock_out_time %}
+                        <span class="time-chip time-out">{{ r.clock_out_time }}</span>
+                    {% else %}
+                        <span class="att-badge badge-pending">Pending</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if r.attendance_status == 'PRESENT' %}
+                        <span class="att-badge badge-present">Present</span>
+                    {% elif r.attendance_status == 'LATE' %}
+                        <span class="att-badge badge-late">Late</span>
+                    {% elif r.attendance_status == 'ABSENT' %}
+                        <span class="att-badge badge-absent">Absent</span>
+                    {% else %}
+                        <span class="att-badge badge-pending">{{ r.attendance_status }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="match-info" title="{{ r.detection_reason }}">
+                        <span class="material-icons-sharp" style="font-size:0.85rem; color:var(--color-success); vertical-align:middle;">fingerprint</span>
+                        {{ r.detection_reason if r.detection_reason else '—' }}
+                    </span>
+                </td>
+                <td>
+                    {% if r.distance_from_office is not none %}
+                        <div class="distance-wrap">
+                            <span class="material-icons-sharp" style="font-size:0.8rem; color:var(--color-primary);">place</span>
+                            {{ "%.1f"|format(r.distance_from_office) }} m
+                        </div>
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="att-id">#{{ r.attendance_id }}</span>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="9" class="empty-state">
+                    <span class="material-icons-sharp" style="font-size:2.5rem; color:var(--color-info-dark); display:block; margin-bottom:0.5rem;">inbox</span>
+                    No attendance records found.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <div class="pagination" id="pagination"></div>
+
+</div>
+
+<style>
+/* ---- Filter select ---- */
+.filter-select {
+    padding: 0.5rem 0.8rem;
+    border-radius: var(--border-radius-2);
+    border: 1px solid var(--color-light);
+    background: var(--color-white);
+    color: var(--color-dark);
+    font-family: poppins, sans-serif;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.filter-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+/* ---- Date filter ---- */
+.date-filter-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.date-filter-icon {
+    position: absolute;
+    left: 0.7rem;
+    font-size: 0.95rem !important;
+    color: var(--color-info-dark);
+    pointer-events: none;
+    z-index: 1;
+}
+.date-filter-input {
+    padding-left: 2.2rem !important;
+    padding-right: 2rem !important;
+    width: 180px;
+    color-scheme: light dark;
+}
+.date-clear-btn {
+    position: absolute;
+    right: 0.4rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-info-dark);
+    display: flex;
+    align-items: center;
+    padding: 0;
+    transition: color 0.2s;
+}
+.date-clear-btn:hover { color: var(--color-danger); }
+.date-clear-btn .material-icons-sharp { font-size: 0.95rem !important; }
+
+/* ---- Sortable column headers ---- */
+.sortable-th {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+.sortable-th:hover { color: var(--color-primary); }
+.sort-icon {
+    font-size: 0.75rem;
+    opacity: 0.45;
+    margin-left: 0.2rem;
+    font-style: normal;
+}
+.sort-icon.asc  { opacity: 1; color: var(--color-primary); }
+.sort-icon.desc { opacity: 1; color: var(--color-primary); }
+
+/* ---- Summary strip ---- */
+.attendance-summary {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.4rem;
+    flex-wrap: wrap;
+}
+.summary-item {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    background: var(--color-white);
+    border-radius: var(--border-radius-3);
+    padding: 0.8rem 1.2rem;
+    box-shadow: var(--box-shadow);
+    flex: 1;
+    min-width: 120px;
+    transition: box-shadow 300ms ease;
+}
+.summary-item:hover { box-shadow: none; }
+.summary-icon { font-size: 1.6rem !important; }
+.summary-item small { display: block; font-size: 0.72rem; }
+.summary-item b { font-size: 1.1rem; color: var(--color-dark); }
+
+/* ---- Table adjustments ---- */
+.attendance-tbl { table-layout: fixed; }
+
+.attendance-tbl thead th {
+    background: var(--color-background);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-info-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+/* ---- Avatar colour cycle ---- */
+.att-avatar {
+    width: 1.9rem;
+    height: 1.9rem;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+.att-avatar-img {
+    object-fit: cover;
+    border: 2px solid var(--color-light);
+    background: var(--color-light);
+}
+
+/* ---- Date chip ---- */
+.date-chip {
+    font-size: 0.78rem;
+    color: var(--color-dark-variant);
+}
+
+/* ---- Time chips ---- */
+.time-chip {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--border-radius-1);
+}
+.time-in  { background: rgba(65,241,182,0.12); color: var(--color-success); }
+.time-out { background: rgba(115,128,236,0.12); color: var(--color-primary); }
+
+/* ---- Attendance status badges ---- */
+.att-badge {
+    padding: 0.22rem 0.65rem;
+    border-radius: var(--border-radius-2);
+    font-size: 0.72rem;
+    font-weight: 600;
+    display: inline-block;
+}
+.badge-present { background: rgba(65,241,182,0.15);  color: var(--color-success); }
+.badge-late    { background: rgba(255,187,85,0.15);  color: var(--color-warning); }
+.badge-absent  { background: rgba(255,119,130,0.15); color: var(--color-danger); }
+.badge-pending { background: var(--color-light);     color: var(--color-info-dark); }
+
+/* ---- Match info ---- */
+.match-info {
+    font-size: 0.76rem;
+    color: var(--color-dark-variant);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* ---- Distance ---- */
+.distance-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.78rem;
+    color: var(--color-dark-variant);
+}
+
+/* ---- Attendance ID ---- */
+.att-id {
+    font-size: 0.72rem;
+    color: var(--color-info-dark);
+}
+
+/* ---- Empty state ---- */
+.empty-state {
+    text-align: center;
+    padding: 3rem !important;
+    color: var(--color-info-dark);
+    font-size: 0.85rem;
+}
+</style>
+
+<script>
+const ROWS_PER_PAGE = 10;
+let currentPage = 1;
+
+// Sort state: { col: 2, dir: 'desc' } — default newest first
+let sortState = { col: 2, dir: 'desc' };
+
+// ── Helpers ──────────────────────────────────────────────
+function getCellText(row, colIndex) {
+    const cells = row.querySelectorAll('td');
+    return cells[colIndex] ? cells[colIndex].innerText.trim() : '';
+}
+
+function getAllRows() {
+    return [...document.querySelectorAll('#attendanceBody tr')]
+        .filter(r => !r.querySelector('.empty-state'));
+}
+
+function getFilteredRows() {
+    return getAllRows().filter(r => r.dataset.visible !== 'false');
+}
+
+// ── Filter (search + status + date) ──────────────────────
+function searchTable() {
+    const query  = document.getElementById('searchInput').value.toLowerCase();
+    const status = document.getElementById('statusFilter').value.toUpperCase();
+    const date   = document.getElementById('dateFilter').value; // "YYYY-MM-DD"
+
+    // Show/hide clear button
+    document.getElementById('dateClearBtn').style.display = date ? 'flex' : 'none';
+
+    getAllRows().forEach(row => {
+        const text      = row.innerText.toLowerCase();
+        const badge     = row.querySelector('.att-badge');
+        const rowStatus = badge ? badge.textContent.trim().toUpperCase() : '';
+        const rowDate   = getCellText(row, 2).trim(); // e.g. "2025-02-20"
+
+        const matchText   = text.includes(query);
+        const matchStatus = status === '' || rowStatus === status;
+        const matchDate   = date === '' || rowDate === date;
+
+        const visible = matchText && matchStatus && matchDate;
+        row.dataset.visible = visible ? 'true' : 'false';
+        row.style.display   = visible ? '' : 'none';
+    });
+
+    currentPage = 1;
+    sortRows(); // re-sort after filter change
+}
+
+function clearDate() {
+    document.getElementById('dateFilter').value = '';
+    searchTable();
+}
+
+// ── Sort ─────────────────────────────────────────────────
+const sortIconIds = { 2: 'sort-date', 3: 'sort-clockin', 4: 'sort-clockout' };
+
+function sortByCol(col) {
+    if (sortState.col === col) {
+        sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+        sortState.col = col;
+        sortState.dir = 'asc';
+    }
+    sortRows();
+    updateSortIcons();
+}
+
+function updateSortIcons() {
+    Object.entries(sortIconIds).forEach(([col, iconId]) => {
+        const el = document.getElementById(iconId);
+        if (!el) return;
+        const colNum = parseInt(col);
+        if (sortState.col === colNum) {
+            el.textContent = sortState.dir === 'asc' ? '↑' : '↓';
+            el.className   = 'sort-icon ' + sortState.dir;
+        } else {
+            el.textContent = '↕';
+            el.className   = 'sort-icon';
+        }
+    });
+}
+
+function sortRows() {
+    const tbody    = document.getElementById('attendanceBody');
+    const allRows  = getAllRows();
+
+    allRows.sort((a, b) => {
+        let valA = getCellText(a, sortState.col);
+        let valB = getCellText(b, sortState.col);
+
+        // Treat empty / "—" / "Pending" as always last
+        const isEmpty = v => v === '' || v === '—' || v.toLowerCase() === 'pending';
+        if (isEmpty(valA) && isEmpty(valB)) return 0;
+        if (isEmpty(valA)) return 1;
+        if (isEmpty(valB)) return -1;
+
+        // Date & time strings compare lexicographically fine (ISO format)
+        const cmp = valA.localeCompare(valB, undefined, { numeric: true });
+        return sortState.dir === 'asc' ? cmp : -cmp;
+    });
+
+    // Re-append in sorted order (preserves filter display state)
+    allRows.forEach(row => tbody.appendChild(row));
+    buildPagination();
+}
+
+// ── Pagination ────────────────────────────────────────────
+function buildPagination() {
+    const rows       = getFilteredRows();
+    const totalPages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));
+    currentPage      = Math.min(currentPage, totalPages);
+
+    // Hide all filtered rows first, then show current page slice
+    rows.forEach((row, i) => {
+        const inPage = i >= (currentPage - 1) * ROWS_PER_PAGE && i < currentPage * ROWS_PER_PAGE;
+        row.style.display = inPage ? '' : 'none';
+    });
+
+    const pg = document.getElementById('pagination');
+    pg.innerHTML = '';
+
+    const prev = document.createElement('a');
+    prev.href = '#'; prev.textContent = 'Previous';
+    if (currentPage === 1) prev.style.opacity = '0.45';
+    prev.onclick = e => { e.preventDefault(); if (currentPage > 1) { currentPage--; buildPagination(); } };
+    pg.appendChild(prev);
+
+    const maxButtons = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+    let end   = Math.min(totalPages, start + maxButtons - 1);
+    if (end - start < maxButtons - 1) start = Math.max(1, end - maxButtons + 1);
+
+    for (let i = start; i <= end; i++) {
+        const a = document.createElement('a');
+        a.href = '#'; a.textContent = i;
+        if (i === currentPage) a.classList.add('active-page');
+        a.onclick = (e) => { e.preventDefault(); currentPage = i; buildPagination(); };
+        pg.appendChild(a);
+    }
+
+    const next = document.createElement('a');
+    next.href = '#'; next.textContent = 'Next';
+    if (currentPage === totalPages) next.style.opacity = '0.45';
+    next.onclick = e => { e.preventDefault(); if (currentPage < totalPages) { currentPage++; buildPagination(); } };
+    pg.appendChild(next);
+}
+
+// ── Init ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    // Mark all rows visible by default
+    getAllRows().forEach(r => r.dataset.visible = 'true');
+    updateSortIcons();
+    sortRows(); // apply default sort (date desc = newest first)
+});
+</script>
+
+{% endblock %}

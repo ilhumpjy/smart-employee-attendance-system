@@ -1,0 +1,229 @@
+{% extends "admin_base.html" %}
+{% block content %}
+
+<div class="form-page-wrapper">
+
+    <div class="form-header">
+        <div>
+            <a href="/admin/employees" class="back-link">
+                <span class="material-icons-sharp">arrow_back_ios</span>
+                Back to Employees
+            </a>
+            <h1 style="margin-top:0.4rem;">Add New Employee</h1>
+            <p>Fill in the details below to register a new employee.</p>
+        </div>
+    </div>
+
+    <div class="form-card">
+        <form method="POST" action="/admin/employees/add">
+
+            <div class="form-grid">
+
+                <div class="form-group">
+                    <label for="name">
+                        <span class="material-icons-sharp form-label-icon">badge</span>
+                        Full Name <span class="required">*</span>
+                    </label>
+                    <input type="text" id="name" name="name" placeholder="e.g. Ahmad Ilham" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">
+                        <span class="material-icons-sharp form-label-icon">mail_outline</span>
+                        Email Address
+                    </label>
+                    <input type="email" id="email" name="email" placeholder="e.g. ilham@company.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">
+                        <span class="material-icons-sharp form-label-icon">phone</span>
+                        Phone Number
+                    </label>
+                    <input type="text" id="phone" name="phone" placeholder="e.g. 012-3456789">
+                </div>
+
+                <div class="form-group">
+                    <label for="department">
+                        <span class="material-icons-sharp form-label-icon">business</span>
+                        Department
+                    </label>
+                    <select id="department" name="department">
+                        <option value="" disabled selected>Select department</option>
+                        <option>Engineering</option>
+                        <option>Human Resources</option>
+                        <option>Finance</option>
+                        <option>Marketing</option>
+                        <option>Operations</option>
+                        <option>IT</option>
+                        <option>Sales</option>
+                    </select>
+                </div>
+
+                <div class="form-group form-group-full">
+                    <label for="position">
+                        <span class="material-icons-sharp form-label-icon">work_outline</span>
+                        Position / Job Title
+                    </label>
+                    <input type="text" id="position" name="position" placeholder="e.g. Software Engineer">
+                </div>
+
+            </div>
+
+            <div class="form-actions">
+                <a href="/admin/employees" class="btn-cancel">Cancel</a>
+                <button type="submit" class="btn-submit">
+                    <span class="material-icons-sharp" style="font-size:1rem; vertical-align:middle;">person_add</span>
+                    Add Employee
+                </button>
+            </div>
+
+        </form>
+    </div>
+
+</div>
+
+<style>
+.form-page-wrapper {
+    padding-bottom: 2rem;
+}
+
+.form-header {
+    margin-bottom: 1.6rem;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    color: var(--color-primary);
+    font-size: 0.82rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    transition: gap 0.2s;
+}
+.back-link:hover { gap: 0.5rem; }
+.back-link .material-icons-sharp { font-size: 0.9rem !important; }
+
+.form-card {
+    background: var(--color-white);
+    border-radius: var(--card-border-radius);
+    padding: var(--card-padding) calc(var(--card-padding) * 1.4);
+    box-shadow: var(--box-shadow);
+    transition: box-shadow 300ms ease;
+}
+.form-card:hover { box-shadow: none; }
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.4rem 2rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.form-group-full {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.form-label-icon {
+    font-size: 1rem !important;
+    color: var(--color-primary);
+}
+
+.required {
+    color: var(--color-danger);
+}
+
+.form-group input,
+.form-group select {
+    padding: 0.65rem 0.9rem;
+    border-radius: var(--border-radius-2);
+    border: 1.5px solid var(--color-light);
+    background: var(--color-background);
+    color: var(--color-dark);
+    font-family: poppins, sans-serif;
+    font-size: 0.82rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input::placeholder { color: var(--color-info-dark); }
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(115,128,236,0.12);
+}
+
+.form-group select {
+    cursor: pointer;
+    appearance: auto;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--color-light);
+}
+
+.btn-cancel {
+    padding: 0.6rem 1.4rem;
+    border-radius: var(--border-radius-2);
+    border: 1.5px solid var(--color-light);
+    color: var(--color-dark-variant);
+    font-size: 0.82rem;
+    font-family: poppins, sans-serif;
+    background: transparent;
+    transition: background 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+}
+.btn-cancel:hover {
+    background: var(--color-light);
+    color: var(--color-dark);
+}
+
+.btn-submit {
+    padding: 0.6rem 1.6rem;
+    border-radius: var(--border-radius-2);
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 0.82rem;
+    font-family: poppins, sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: opacity 0.2s, transform 0.15s;
+}
+.btn-submit:hover {
+    opacity: 0.88;
+    transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group-full { grid-column: 1; }
+}
+</style>
+
+{% endblock %}

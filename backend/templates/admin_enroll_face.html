@@ -1,0 +1,637 @@
+{% extends "admin_base.html" %}
+{% block content %}
+
+<div class="form-page-wrapper">
+
+    <div class="form-header">
+        <div>
+            <a href="/admin/employees" class="back-link">
+                <span class="material-icons-sharp">arrow_back_ios</span>
+                Back to Employees
+            </a>
+            <h1 style="margin-top:0.4rem;">Face Enrollment</h1>
+            <p>
+            Upload up to <b>5 face samples</b> for better facial recognition accuracy.
+            Recommended angles: front, slight left, and slight right.
+            </p>
+        </div>
+    </div>
+
+    <div class="enroll-layout">
+
+        <!-- Left: Upload Card -->
+        <div class="form-card enroll-card">
+            <div class="enroll-icon-header">
+                <div class="enroll-icon-circle">
+                    <span class="material-icons-sharp">face</span>
+                </div>
+                <div>
+                    <h3 style="color: var(--color-dark); font-size:1rem;">Employee ID: <span class="primary">EMP{{ "%03d"|format(emp_id) }}</span></h3>
+                    <p style="font-size:0.78rem;">
+                    Upload multiple face angles with good lighting for more accurate attendance recognition.
+                    </p>
+                </div>
+            </div>
+
+            <form enctype="multipart/form-data" id="enrollForm">
+
+                <!-- Drop Zone -->
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-content" id="dropContent">
+                        <span class="material-icons-sharp drop-icon">cloud_upload</span>
+                        <p><b>Drag & drop</b> face photo here</p>
+                        <small class="text-muted">Front face recommended • JPG, PNG • Up to 10MB • Max {{ 5 - total_samples }} more</small>
+                    </div>
+                    <input type="file" name="images" id="imageInput" accept="image/jpeg,image/png" multiple>
+                </div>
+
+                <div id="previewSection" style="display:none; margin-bottom:1.4rem;">
+                    <div class="existing-header">
+                        <span class="material-icons-sharp">photo_library</span>
+                        Selected Photos (<span id="selectedCount">0</span>)
+                    </div>
+                    <div class="sample-grid" id="previewGrid"></div>
+                </div>
+
+                <div class="sample-progress">
+                    <div class="sample-progress-header">
+                        <span>Enrollment Samples</span>
+                        <span id="progressText">{{ total_samples }}/5</span>
+                    </div>
+
+                    <div class="sample-progress-bar">
+
+                        <div class="sample-progress-fill"
+                            data-width="{{ total_samples * 20 }}">
+                        </div>
+
+                    </div>
+
+                    <small class="text-muted">
+                        Recommended: minimum 3 face samples.
+                    </small>
+                </div>
+
+                <!-- Existing Samples -->
+                {% if enrolled_faces %}
+                <div class="existing-samples">
+
+                    <div class="existing-header">
+                        <span class="material-icons-sharp">collections</span>
+                        Existing Face Samples
+                    </div>
+
+                    <div class="sample-grid">
+
+                        {% for sample in enrolled_faces %}
+                        <div class="sample-card">
+
+                            <img src="/{{ sample.face_image_path }}"
+                                alt="Face Sample">
+
+                            <div class="sample-overlay">
+                                <form method="POST"
+                                    action="/admin/employees/delete_face/{{ sample.face_id }}"
+                                    onsubmit="return confirm('Delete this face sample?')">
+
+                                    <button type="submit" class="delete-sample-btn">
+                                        <span class="material-icons-sharp">delete</span>
+                                    </button>
+
+                                </form>
+                            </div>
+
+                        </div>
+                        {% endfor %}
+
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Guidelines -->
+                <div class="enroll-tips">
+                    <div class="tip"><span class="material-icons-sharp tip-icon success">check_circle</span><span>Capture front, left and right angles</span></div>
+                    <div class="tip"><span class="material-icons-sharp tip-icon success">check_circle</span><span>Good, even lighting</span></div>
+                    <div class="tip"><span class="material-icons-sharp tip-icon danger">cancel</span><span>No sunglasses or heavy shadows</span></div>
+                    <div class="tip"><span class="material-icons-sharp tip-icon danger">cancel</span><span>No group photos</span></div>
+                </div>
+
+                <div class="form-actions">
+                    <a href="/admin/employees" class="btn-cancel">Cancel</a>
+                    <button type="button" class="btn-submit" id="submitBtn" onclick="submitEnrollment()">
+                        <span class="material-icons-sharp" style="font-size:1rem;">fingerprint</span>
+                        Enroll Face
+                    </button>
+                </div>
+
+            </form>
+        </div>
+
+        <!-- Right: Info Card -->
+        <div class="enroll-info-card">
+            <div class="info-card-title">
+                <span class="material-icons-sharp">info</span>
+                How It Works
+            </div>
+            <div class="info-steps">
+                <div class="info-step">
+                    <div class="step-num">1</div>
+                    <div>
+                        <b>Upload Photo</b>
+                        <p>Upload multiple face angles for better recognition accuracy.</p>
+                    </div>
+                </div>
+                <div class="info-step">
+                    <div class="step-num">2</div>
+                    <div>
+                        <b>Face Detection</b>
+                        <p>The system detects and crops the face from the image using YOLO.</p>
+                    </div>
+                </div>
+                <div class="info-step">
+                    <div class="step-num">3</div>
+                    <div>
+                        <b>Embedding Saved</b>
+                        <p>Each uploaded face sample is converted into AI embeddings and stored securely.</p>
+                    </div>
+                </div>
+                <div class="info-step">
+                    <div class="step-num last">4</div>
+                    <div>
+                        <b>Ready to Clock In</b>
+                        <p>The employee can now use facial recognition for attendance.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toastNotif" style="
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        padding: 0.9rem 1.4rem;
+        border-radius: 0.8rem;
+        font-size: 0.85rem;
+        font-weight: 500;
+        display: none;
+        z-index: 9999;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        align-items: center;
+        gap: 0.6rem;
+        max-width: 360px;
+        transition: opacity 0.3s ease;
+    "></div>
+</div>
+
+<style>
+.enroll-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 1.6rem;
+    align-items: start;
+}
+
+/* Icon header inside card */
+.enroll-icon-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.6rem;
+    padding-bottom: 1.2rem;
+    border-bottom: 1px solid var(--color-light);
+}
+
+.enroll-icon-circle {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background: rgba(115,128,236,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.enroll-icon-circle .material-icons-sharp {
+    color: var(--color-primary);
+    font-size: 1.5rem !important;
+}
+
+/* Drop Zone */
+.drop-zone {
+    position: relative;
+    border: 2px dashed var(--color-light);
+    border-radius: var(--border-radius-3);
+    background: var(--color-background);
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    overflow: hidden;
+    margin-bottom: 1.4rem;
+}
+
+.drop-zone:hover,
+.drop-zone.dragover {
+    border-color: var(--color-primary);
+    background: rgba(115,128,236,0.05);
+}
+
+.drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+}
+
+.drop-zone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    pointer-events: none;
+    text-align: center;
+    padding: 2rem;
+}
+
+.drop-icon {
+    font-size: 2.8rem !important;
+    color: var(--color-primary);
+    opacity: 0.6;
+}
+
+.drop-preview {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    border-radius: var(--border-radius-3);
+}
+
+/* Sample Progress */
+.sample-progress{
+    margin-bottom:1.4rem;
+}
+
+.sample-progress-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:0.5rem;
+    font-size:0.8rem;
+    font-weight:600;
+    color:var(--color-dark);
+}
+
+.sample-progress-bar{
+    width:100%;
+    height:10px;
+    background:var(--color-light);
+    border-radius:999px;
+    overflow:hidden;
+    margin-bottom:0.45rem;
+}
+
+.sample-progress-fill{
+    height:100%;
+    background:linear-gradient(90deg, #7380ec, #5f6be0);
+    border-radius:999px;
+    transition:width 0.3s ease;
+}
+
+/* Existing Samples */
+.existing-samples{
+    margin-bottom:1.5rem;
+}
+
+.existing-header{
+    display:flex;
+    align-items:center;
+    gap:0.45rem;
+    font-size:0.85rem;
+    font-weight:600;
+    color:var(--color-dark);
+    margin-bottom:0.8rem;
+}
+
+.existing-header .material-icons-sharp{
+    color:var(--color-primary);
+    font-size:1rem !important;
+}
+
+.sample-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(90px,1fr));
+    gap:0.8rem;
+}
+
+.sample-card{
+    position:relative;
+    border-radius:1rem;
+    overflow:hidden;
+    background:var(--color-light);
+    aspect-ratio:1/1;
+    border:1px solid var(--color-light);
+}
+
+.sample-card img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+
+.sample-overlay{
+    position:absolute;
+    inset:0;
+    background:rgba(0,0,0,0.45);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    opacity:0;
+    transition:0.2s ease;
+}
+
+.sample-card:hover .sample-overlay{
+    opacity:1;
+}
+
+.delete-sample-btn{
+    width:2.2rem;
+    height:2.2rem;
+    border:none;
+    border-radius:50%;
+    background:#ff4d4f;
+    color:#fff;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:0.2s ease;
+}
+
+.delete-sample-btn:hover{
+    transform:scale(1.08);
+}
+
+.delete-sample-btn .material-icons-sharp{
+    font-size:1rem !important;
+}
+
+/* Tips */
+.enroll-tips {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    margin-bottom: 1.4rem;
+}
+
+.tip {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    color: var(--color-dark-variant);
+}
+
+.tip-icon {
+    font-size: 1rem !important;
+}
+.tip-icon.success { color: var(--color-success); }
+.tip-icon.danger  { color: var(--color-danger); }
+
+/* Info card (right) */
+.enroll-info-card {
+    background: var(--color-white);
+    border-radius: var(--card-border-radius);
+    padding: var(--card-padding);
+    box-shadow: var(--box-shadow);
+    transition: box-shadow 300ms ease;
+}
+.enroll-info-card:hover { box-shadow: none; }
+
+.info-card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--color-dark);
+    margin-bottom: 1.4rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--color-light);
+}
+.info-card-title .material-icons-sharp {
+    font-size: 1.1rem !important;
+    color: var(--color-primary);
+}
+
+.info-steps { display: flex; flex-direction: column; gap: 1.2rem; }
+
+.info-step {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.step-num {
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.step-num:not(.last)::after {
+    content: '';
+    position: absolute;
+    top: 1.8rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 1.2rem;
+    background: var(--color-light);
+}
+
+.info-step b { font-size: 0.82rem; color: var(--color-dark); display: block; margin-bottom: 0.2rem; }
+.info-step p { font-size: 0.76rem; line-height: 1.5; }
+
+@media (max-width: 1000px) {
+    .enroll-layout { grid-template-columns: 1fr; }
+}
+</style>
+
+<script>
+const dropZone      = document.getElementById('dropZone');
+const imageInput    = document.getElementById('imageInput');
+const dropContent   = document.getElementById('dropContent');
+const previewGrid   = document.getElementById('previewGrid');
+const previewSec    = document.getElementById('previewSection');
+const selectedCount = document.getElementById('selectedCount');
+const submitBtn     = document.getElementById('submitBtn');
+
+const existingCount = parseInt(document.getElementById('progressText').textContent.split('/')[0]);
+const MAX_TOTAL = 5;
+let slotsLeft = MAX_TOTAL - existingCount;
+let selectedFiles = [];
+
+// Progress bar init
+document.querySelectorAll('.sample-progress-fill').forEach(el => {
+    el.style.width = el.dataset.width + '%';
+});
+
+// File input change
+imageInput.addEventListener('change', function() {
+    addFiles([...this.files]);
+    this.value = '';
+});
+
+// Drag & Drop
+['dragenter', 'dragover'].forEach(evt => {
+    dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+});
+['dragleave', 'drop'].forEach(evt => {
+    dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.remove('dragover'); });
+});
+dropZone.addEventListener('drop', e => {
+    addFiles([...e.dataTransfer.files]);
+});
+
+function showToast(message, type) {
+    const toast = document.getElementById('toastNotif');
+    const colors = {
+        success: { bg: 'var(--color-success)', text: '#1a1a2e', icon: 'check_circle' },
+        fail:    { bg: 'var(--color-danger)',  text: '#fff',    icon: 'error' },
+        partial: { bg: '#FFBB55',              text: '#1a1a2e', icon: 'warning' }
+    };
+    const c = colors[type] || colors.fail;
+    toast.style.background = c.bg;
+    toast.style.color = c.text;
+    toast.innerHTML = `<span class="material-icons-sharp" style="font-size:1.1rem;">${c.icon}</span> ${message}`;
+    toast.style.display = 'flex';
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => { toast.style.display = 'none'; }, 4000);
+}
+
+function addFiles(newFiles) {
+    const allowed = ['image/jpeg', 'image/png'];
+    const valid = newFiles.filter(f => allowed.includes(f.type));
+    const canAdd = slotsLeft - selectedFiles.length;
+
+    if (canAdd <= 0) {
+        showToast('No slots remaining. Maximum 5 face samples allowed.', 'fail');
+        return;
+    }
+
+    const toAdd = valid.slice(0, canAdd);
+    if (toAdd.length < valid.length) {
+        showToast(`Only ${toAdd.length} image(s) added. ${canAdd} slot(s) remaining.`, 'partial');
+    }
+
+    selectedFiles = [...selectedFiles, ...toAdd];
+    renderPreviews();
+}
+
+function removeFile(index) {
+    selectedFiles.splice(index, 1);
+    renderPreviews();
+}
+
+function renderPreviews() {
+    previewGrid.innerHTML = '';
+
+    selectedFiles.forEach((file, i) => {
+        const card = document.createElement('div');
+        card.className = 'sample-card';
+
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.alt = `Preview ${i + 1}`;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'sample-overlay';
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'delete-sample-btn';
+        removeBtn.innerHTML = '<span class="material-icons-sharp">delete</span>';
+        removeBtn.onclick = () => removeFile(i);
+
+        overlay.appendChild(removeBtn);
+        card.appendChild(img);
+        card.appendChild(overlay);
+        previewGrid.appendChild(card);
+    });
+
+    const count = selectedFiles.length;
+    selectedCount.textContent = count;
+    previewSec.style.display = count > 0 ? 'block' : 'none';
+    submitBtn.disabled = count === 0;
+
+    // Show drop zone content
+    dropContent.querySelector('small').textContent = 
+    count > 0 
+    ? `${count} photo(s) selected — click or drag to add more` 
+    : 'Front face recommended • JPG, PNG • Up to 10MB';
+
+    // Update progress bar in real-time
+    const newTotal = existingCount + count;
+    document.getElementById('progressText').textContent = newTotal + '/5';
+    document.querySelector('.sample-progress-fill').style.width = (newTotal * 20) + '%';
+    }
+
+// Submit via fetch
+async function submitEnrollment() {
+    if (selectedFiles.length === 0) return;
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="material-icons-sharp" style="font-size:1rem; animation:spin 1s linear infinite;">refresh</span> Enrolling...';
+    submitBtn.style.opacity = '0.75';
+
+    const formData = new FormData();
+    selectedFiles.forEach(file => formData.append('images', file));
+
+    try {
+        const resp = await fetch(window.location.pathname, {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await resp.json();
+
+        if (data.status === 'success' || data.status === 'partial') {
+            showToast(data.message, data.status);
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.message || 'Upload failed. Please try again.', 'fail');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span class="material-icons-sharp" style="font-size:1rem;">fingerprint</span> Enroll Face';
+            submitBtn.style.opacity = '1';
+        }
+
+    } catch (err) {
+        showToast('Network error. Please try again.', 'fail');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span class="material-icons-sharp" style="font-size:1rem;">fingerprint</span> Enroll Face';
+        submitBtn.style.opacity = '1';
+    }
+}
+
+// Spin animation
+const style = document.createElement('style');
+style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+document.head.appendChild(style);
+</script>
+
+{% endblock %}

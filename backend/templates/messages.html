@@ -1,0 +1,476 @@
+{% extends "admin_base.html" %}
+{% block content %}
+
+<div class="employee-wrapper">
+
+    {% with flashed_messages = get_flashed_messages(with_categories=true) %}
+        {% if flashed_messages %}
+            {% for category, message in flashed_messages %}
+            <div class="msg-flash msg-flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Page Header -->
+    <div class="employee-top">
+        <div>
+            <h1>Messages</h1>
+            <p style="margin-top:0.3rem; font-size:0.82rem;">
+                Employee messages sent from the mobile app.
+                {% if unread_count > 0 %}
+                <span class="msg-unread-badge">{{ unread_count }} unread</span>
+                {% endif %}
+            </p>
+        </div>
+        <div class="employee-actions">
+            <div class="search-wrapper">
+                <span class="material-icons-sharp search-icon">search</span>
+                <input type="text" id="searchInput" placeholder="Search messages..." class="search-input" onkeyup="filterMessages()">
+            </div>
+            <select id="statusFilter" class="filter-select" onchange="filterMessages()">
+                <option value="">All</option>
+                <option value="unread">Unread</option>
+                <option value="read">Read</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Summary strip -->
+    <div class="msg-summary">
+        <div class="msg-summary-item">
+            <span class="material-icons-sharp" style="color:var(--color-primary);">mail</span>
+            <div>
+                <small class="text-muted">Total</small>
+                <b>{{ messages | length }}</b>
+            </div>
+        </div>
+        <div class="msg-summary-item">
+            <span class="material-icons-sharp" style="color:var(--color-warning);">mark_email_unread</span>
+            <div>
+                <small class="text-muted">Unread</small>
+                <b>{{ unread_count }}</b>
+            </div>
+        </div>
+        <div class="msg-summary-item">
+            <span class="material-icons-sharp" style="color:var(--color-success);">mark_email_read</span>
+            <div>
+                <small class="text-muted">Read</small>
+                <b>{{ messages | length - unread_count }}</b>
+            </div>
+        </div>
+        <div class="msg-summary-item" style="margin-left:auto;">
+            <form method="POST" action="/admin/messages/mark-all-read" style="margin:0;">
+                <button type="submit" class="btn-mark-all">
+                    <span class="material-icons-sharp" style="font-size:0.9rem;">done_all</span>
+                    Mark all read
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Message List -->
+    <div class="msg-list" id="msgList">
+
+        {% for msg in messages %}
+        <div class="msg-card {% if not msg.is_read %}msg-unread{% endif %}"
+             data-status="{{ 'unread' if not msg.is_read else 'read' }}"
+             data-text="{{ msg.employee_name | lower }} {{ msg.message_text | lower }}">
+
+            <!-- Left: Avatar -->
+            {% if msg.profile_photo %}
+                <img class="msg-avatar msg-avatar-img"
+                    src="{{ msg.profile_photo }}"
+                    alt="{{ msg.employee_name[0] | upper }}"
+                    onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                <div class="msg-avatar msg-avatar-color-{{ loop.index % 5 }}" style="display:none;">
+                    {{ msg.employee_name[0] | upper }}
+                </div>
+            {% else %}
+                <div class="msg-avatar msg-avatar-color-{{ loop.index % 5 }}">
+                    {{ msg.employee_name[0] | upper }}
+                </div>
+            {% endif %}
+
+            <!-- Center: Content -->
+            <div class="msg-body" onclick="toggleExpand(this)">
+                <div class="msg-meta">
+                    <span class="msg-name">{{ msg.employee_name }}</span>
+                    <span class="msg-dept">{{ msg.department if msg.department else 'N/A' }}</span>
+                    {% if not msg.is_read %}
+                    <span class="msg-dot"></span>
+                    {% endif %}
+                </div>
+                <p class="msg-preview">{{ msg.message_text }}</p>
+                <div class="msg-expanded" style="display:none;">
+                    <p class="msg-full-text">{{ msg.message_text }}</p>
+                    {% if msg.replies %}
+                    <div class="reply-history">
+                        {% for reply in msg.replies %}
+                        <div class="reply-history-item">
+                            <div class="reply-history-meta">
+                                <strong>{{ reply.admin_name }}</strong>
+                                <span>
+                                    {{ reply.replied_at.strftime('%d %b %Y, %I:%M %p') if reply.replied_at else '' }}
+                                </span>
+                            </div>
+                            <p>{{ reply.reply_text }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <!-- Reply box -->
+                    <form method="POST" action="/admin/messages/reply/{{ msg.message_id }}"
+                          class="reply-form" onclick="event.stopPropagation()">
+                        <textarea name="reply_text" placeholder="Type a reply..."
+                                  class="reply-input" rows="2" required></textarea>
+                        <button type="submit" class="btn-reply">
+                            <span class="material-icons-sharp" style="font-size:0.9rem;">send</span>
+                            Send Reply
+                        </button>
+                    </form>
+                </div>
+                <small class="msg-time">
+                    <span class="material-icons-sharp" style="font-size:0.75rem; vertical-align:middle;">schedule</span>
+                    {{ msg.sent_at.strftime('%d %b %Y, %I:%M %p') if msg.sent_at else '—' }}
+                </small>
+            </div>
+
+            <!-- Right: Actions -->
+            <div class="msg-actions">
+                {% if not msg.is_read %}
+                <a href="/admin/messages/read/{{ msg.message_id }}" class="msg-action-btn" title="Mark as read">
+                    <span class="material-icons-sharp">drafts</span>
+                </a>
+                {% else %}
+                <a href="/admin/messages/unread/{{ msg.message_id }}" class="msg-action-btn" title="Mark as unread">
+                    <span class="material-icons-sharp">mail</span>
+                </a>
+                {% endif %}
+                <a href="/admin/messages/delete/{{ msg.message_id }}"
+                   class="msg-action-btn msg-action-danger"
+                   title="Delete"
+                   onclick="return confirm('Delete this message?')">
+                    <span class="material-icons-sharp">delete_outline</span>
+                </a>
+            </div>
+        </div>
+        {% else %}
+        <div class="msg-empty">
+            <span class="material-icons-sharp" style="font-size:3rem; color:var(--color-info-dark);">inbox</span>
+            <p>No messages yet. Employees can send messages from the mobile app.</p>
+        </div>
+        {% endfor %}
+
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" id="pagination"></div>
+
+</div>
+
+<style>
+/* ── Summary strip ─────────────────────── */
+.msg-summary {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+}
+.msg-summary-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--color-white);
+    border-radius: var(--border-radius-3);
+    padding: 0.7rem 1.1rem;
+    box-shadow: var(--box-shadow);
+    transition: box-shadow 300ms;
+}
+.msg-summary-item:hover { box-shadow: none; }
+.msg-summary-item .material-icons-sharp { font-size: 1.4rem !important; }
+.msg-summary-item small { display: block; font-size: 0.72rem; }
+.msg-summary-item b { font-size: 1rem; color: var(--color-dark); }
+
+.msg-unread-badge {
+    background: rgba(255,119,130,0.15);
+    color: var(--color-danger);
+    padding: 0.1rem 0.55rem;
+    border-radius: var(--border-radius-1);
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-left: 0.4rem;
+}
+
+.btn-mark-all {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius-2);
+    background: transparent;
+    border: 1.5px solid var(--color-light);
+    color: var(--color-dark-variant);
+    font-family: poppins, sans-serif;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+}
+.btn-mark-all:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+/* ── Message cards ──────────────────────── */
+.msg-list { display: flex; flex-direction: column; gap: 0; }
+
+.msg-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid var(--color-light);
+    background: var(--color-white);
+    transition: background 0.15s;
+    cursor: default;
+}
+.msg-card:first-child { border-radius: var(--border-radius-3) var(--border-radius-3) 0 0; }
+.msg-card:last-child  { border-radius: 0 0 var(--border-radius-3) var(--border-radius-3); border-bottom: none; }
+.msg-card:only-child  { border-radius: var(--border-radius-3); border-bottom: none; }
+.msg-card:hover { background: var(--color-background); }
+
+.msg-unread { background: rgba(115,128,236,0.04); }
+.msg-unread .msg-name { font-weight: 700; color: var(--color-dark); }
+.msg-unread .msg-preview { color: var(--color-dark); font-weight: 500; }
+
+/* Avatar with colour cycle */
+.msg-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+}
+.msg-avatar-img {
+    object-fit: cover;
+    border: 2px solid var(--color-light);
+}
+.msg-avatar-color-0 { background: var(--color-primary); }
+.msg-avatar-color-1 { background: var(--color-success); }
+.msg-avatar-color-2 { background: var(--color-warning); }
+.msg-avatar-color-3 { background: var(--color-danger); }
+.msg-avatar-color-4 { background: #8e44ad; }
+
+/* Message body */
+.msg-body { flex: 1; min-width: 0; cursor: pointer; }
+
+.msg-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.2rem;
+    flex-wrap: wrap;
+}
+.msg-name  { font-size: 0.84rem; color: var(--color-dark-variant); font-weight: 500; }
+.msg-dept  { font-size: 0.72rem; color: var(--color-info-dark); }
+.msg-dot   { width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--color-primary); flex-shrink: 0; }
+
+.msg-preview {
+    font-size: 0.82rem;
+    color: var(--color-dark-variant);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0 0 0.3rem;
+}
+
+.msg-expanded { margin-top: 0.8rem; }
+.msg-full-text {
+    font-size: 0.84rem;
+    color: var(--color-dark);
+    line-height: 1.6;
+    margin-bottom: 0.8rem;
+    white-space: pre-wrap;
+    background: var(--color-background);
+    padding: 0.7rem 0.9rem;
+    border-radius: var(--border-radius-2);
+    border-left: 3px solid var(--color-primary);
+}
+
+/* Reply form */
+.reply-form { display: flex; flex-direction: column; gap: 0.5rem; }
+.reply-history {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    margin-bottom: 0.75rem;
+}
+.reply-history-item {
+    padding: 0.7rem 0.85rem;
+    border-radius: var(--border-radius-2);
+    background: rgba(115, 128, 236, 0.09);
+    border-left: 3px solid var(--color-primary);
+}
+.reply-history-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.3rem;
+    font-size: 0.7rem;
+    color: var(--color-info-dark);
+}
+.reply-history-meta strong { color: var(--color-primary); }
+.reply-history-item p {
+    margin: 0;
+    color: var(--color-dark);
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+}
+.msg-flash {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--border-radius-2);
+    font-size: 0.82rem;
+}
+.msg-flash-success {
+    color: #176c50;
+    background: rgba(65, 241, 182, 0.18);
+}
+.msg-flash-error {
+    color: #a93442;
+    background: rgba(255, 119, 130, 0.18);
+}
+.reply-input {
+    width: 100%;
+    padding: 0.6rem 0.85rem;
+    border-radius: var(--border-radius-2);
+    border: 1.5px solid var(--color-light);
+    background: var(--color-background);
+    color: var(--color-dark);
+    font-family: poppins, sans-serif;
+    font-size: 0.82rem;
+    resize: vertical;
+    transition: border-color 0.2s;
+}
+.reply-input:focus { outline: none; border-color: var(--color-primary); }
+
+.btn-reply {
+    align-self: flex-end;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.42rem 1rem;
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    border-radius: var(--border-radius-2);
+    font-family: poppins, sans-serif;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.btn-reply:hover { opacity: 0.85; }
+
+.msg-time {
+    font-size: 0.72rem;
+    color: var(--color-info-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    margin-top: 0.3rem;
+}
+
+/* Action buttons */
+.msg-actions { display: flex; gap: 0.3rem; flex-shrink: 0; margin-top: 0.1rem; }
+.msg-action-btn {
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--border-radius-1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-info-dark);
+    transition: background 0.15s, color 0.15s;
+}
+.msg-action-btn .material-icons-sharp { font-size: 1.05rem !important; }
+.msg-action-btn:hover { background: var(--color-light); color: var(--color-primary); }
+.msg-action-danger:hover { background: rgba(255,119,130,0.12); color: var(--color-danger); }
+
+/* Empty state */
+.msg-empty {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: var(--color-white);
+    border-radius: var(--border-radius-3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8rem;
+    color: var(--color-info-dark);
+    font-size: 0.84rem;
+}
+
+/* Filter select */
+.filter-select {
+    padding: 0.5rem 0.8rem;
+    border-radius: var(--border-radius-2);
+    border: 1px solid var(--color-light);
+    background: var(--color-white);
+    color: var(--color-dark);
+    font-family: poppins, sans-serif;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+.filter-select:focus { outline: none; border-color: var(--color-primary); }
+</style>
+
+<script>
+// ── Expand/collapse message ────────────
+function toggleExpand(bodyEl) {
+    const expanded = bodyEl.querySelector('.msg-expanded');
+    const preview  = bodyEl.querySelector('.msg-preview');
+    const isOpen   = expanded.style.display !== 'none';
+
+    expanded.style.display = isOpen ? 'none' : 'block';
+    preview.style.display  = isOpen ? '' : 'none';
+
+    // Auto mark as read via fetch when opened
+    if (!isOpen) {
+        const card = bodyEl.closest('.msg-card');
+        const readLink = card.querySelector('.msg-action-btn[href*="/read/"]');
+        if (readLink) {
+            fetch(readLink.href).then(() => {
+                card.classList.remove('msg-unread');
+                card.dataset.status = 'read';
+                readLink.querySelector('.material-icons-sharp').textContent = 'mail';
+                readLink.href = readLink.href.replace('/read/', '/unread/');
+                readLink.title = 'Mark as unread';
+            });
+        }
+    }
+}
+
+// ── Filter messages ────────────────────
+function filterMessages() {
+    const query  = document.getElementById('searchInput').value.toLowerCase();
+    const status = document.getElementById('statusFilter').value;
+    const cards  = document.querySelectorAll('.msg-card');
+
+    cards.forEach(card => {
+        const text       = card.dataset.text || '';
+        const cardStatus = card.dataset.status || '';
+
+        const matchText   = text.includes(query);
+        const matchStatus = status === '' || cardStatus === status;
+
+        card.style.display = (matchText && matchStatus) ? '' : 'none';
+    });
+}
+</script>
+
+{% endblock %}

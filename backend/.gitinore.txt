@@ -1,0 +1,21 @@
+# Python virtual environments
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Secrets and environment variables
+.env
+.env.*
+!.env.example
+
+# Uploaded images and user data
+uploads/*
+
+# Local editor settings
+.vscode/
+
+# Large local tools
+ngrok.exe

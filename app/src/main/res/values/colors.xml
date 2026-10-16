@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand -->
+    <color name="primary">#6C3FC5</color>
+    <color name="primary_dark">#4A2899</color>
+    <color name="primary_light">#EDE7F6</color>
+    <color name="accent">#9C4DCC</color>
+    <color name="accent_light">#F3E5F5</color>
+
+    <!-- Surfaces -->
+    <color name="black">#FF1A1A2E</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="bg">#FFF5F3FA</color>
+    <color name="surface">#FFFFFFFF</color>
+    <color name="gray">#FF64748B</color>
+    <color name="gray2">#FFE8E4F0</color>
+    <color name="separator">#FFEDE8F5</color>
+    <color name="text_secondary">#FF64748B</color>
+    <color name="text_hint">#FF94A3B8</color>
+
+    <!-- Legacy brand aliases (kept for Java compatibility) -->
+    <color name="purple">@color/primary_light</color>
+    <color name="purple_bg">@color/primary_light</color>
+    <color name="purple_dark">@color/primary</color>
+    <color name="purple_title">@color/primary_dark</color>
+    <color name="purple_sub">@color/primary</color>
+
+    <!-- Status -->
+    <color name="green">#FFDCFCE7</color>
+    <color name="green_bg">#FFF0FDF4</color>
+    <color name="green_text">#FF166534</color>
+    <color name="yellow">#FFFEF3C7</color>
+    <color name="yellow_bg">#FFFFFBEB</color>
+    <color name="yellow_text">#FF92400E</color>
+    <color name="orange">#FFFFEDD5</color>
+    <color name="orange_bg">#FFFFF7ED</color>
+    <color name="pink">#FFFCE7F3</color>
+    <color name="pink_text">#FF9D174D</color>
+    <color name="red">#FFFECACA</color>
+    <color name="red_bg">#FFFEF2F2</color>
+    <color name="red_text">#FF991B1B</color>
+    <color name="blue">#FFDBEAFE</color>
+    <color name="blue_bg">#FFEFF6FF</color>
+    <color name="blue_text">#FF1E40AF</color>
+
+    <!-- Navigation -->
+    <color name="nav_bg">#FFFFFFFF</color>
+    <color name="nav_inactive">#FF8E8E93</color>
+    <color name="nav_active">#FFFFFFFF</color>
+
+    <!-- Camera -->
+    <color name="cam_bg">#FF0F0A1E</color>
+    <color name="cam_surface">#FF1A1035</color>
+
+    <!-- Semantic -->
+    <color name="success">@color/green_text</color>
+    <color name="danger">@color/red_text</color>
+    <color name="dark">@color/black</color>
+</resources>

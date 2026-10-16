@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Attendance Admin</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- MATERIAL CDN -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Sharp" rel="stylesheet">
+
+    <!-- LOCAL STORAGE THEME MODE -->
+    <script>
+        (function () {
+            const savedTheme = localStorage.getItem("theme") || "light";
+            if (savedTheme === "dark") {
+                document.documentElement.classList.add("dark-theme-variables");
+            }
+            document.documentElement.setAttribute("data-theme", savedTheme);
+        })();
+    </script>
+
+    <!-- STYLESHEET -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+
+<body class="{% if request.endpoint == 'admin_dashboard' %}layout-dashboard{% else %}layout-wide{% endif %}">
+    <div class="container">
+
+        <!-- ═══ SIDEBAR ═══ -->
+        <aside>
+            <div class="top">
+                <div class="logo">
+                    <img src="{{ url_for('static', filename='assets/logo.png') }}" alt="Attendix Logo">
+                    <h2>ATTEN<span class="danger">DIX</span></h2>
+                </div>
+                <div class="close" id="close-btn">
+                    <span class="material-icons-sharp">close</span>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <a href="{{ url_for('admin_dashboard') }}"
+                   class="{% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                    <span class="material-icons-sharp">grid_view</span>
+                    <h3>Dashboard</h3>
+                </a>
+                <a href="{{ url_for('view_employees') }}"
+                   class="{% if request.endpoint in ['view_employees', 'edit_employee_page', 'update_employee', 'reset_employee_password'] %}active{% endif %}">
+                    <span class="material-icons-sharp">group</span>
+                    <h3>Employee</h3>
+                </a>
+                <a href="{{ url_for('view_attendance') }}"
+                   class="{% if request.endpoint == 'view_attendance' %}active{% endif %}">
+                    <span class="material-icons-sharp">receipt_long</span>
+                    <h3>Attendance</h3>
+                </a>
+                <a href="{{ url_for('admin_report') }}"
+                   class="{% if request.endpoint == 'admin_report' %}active{% endif %}">
+                    <span class="material-icons-sharp">assessment</span>
+                    <h3>Reports</h3>
+                </a>
+                <a href="{{ url_for('add_employee_page') }}"
+                   class="{% if request.endpoint in ['add_employee_page', 'add_employee', 'enroll_face_page', 'admin_enroll_face', 'delete_face_sample'] %}active{% endif %}">
+                    <span class="material-icons-sharp">post_add</span>
+                    <h3>New Enrollment</h3>
+                </a>
+                <a href="{{ url_for('admin_messages') }}"
+                   class="{% if request.endpoint in ['admin_messages', 'mark_message_read', 'mark_message_unread', 'mark_all_read', 'delete_message', 'reply_message'] %}active{% endif %}">
+                    <span class="material-icons-sharp">mail_outline</span>
+                    <h3>Message</h3>
+                    {% if g.unread_msg_count and g.unread_msg_count > 0 %}
+                    <span class="messages-count">{{ g.unread_msg_count }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('admin_settings') }}"
+                   class="{% if request.endpoint in ['admin_settings', 'update_admin_profile', 'update_admin_photo', 'remove_admin_photo', 'update_admin_password', 'update_location'] %}active{% endif %}">
+                    <span class="material-icons-sharp">settings</span>
+                    <h3>Settings</h3>
+                </a>
+                <a href="{{ url_for('admin_logout') }}">
+                    <span class="material-icons-sharp">logout</span>
+                    <h3>Log Out</h3>
+                </a>
+            </div>
+        </aside>
+        <!-- END OF ASIDE -->
+
+        <!-- ═══ MAIN ═══ -->
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+        <!-- END OF MAIN -->
+
+        <!-- ═══ RIGHT PANEL ═══ -->
+        <div class="right">
+            <div class="top">
+                <button id="menu-btn">
+                    <span class="material-icons-sharp">menu</span>
+                </button>
+
+                <div class="theme-toggler">
+                    <span class="material-icons-sharp">light_mode</span>
+                    <span class="material-icons-sharp">dark_mode</span>
+                </div>
+
+                <!-- ── Dynamic profile top-right ── -->
+                <div class="profile">
+                    <div class="info">
+                        <p>Hey, <b>{{ g.admin_name if g.admin_name else 'Admin' }}</b></p>
+                        <small class="text-muted">{{ g.admin_role if g.admin_role else 'Admin' }}</small>
+                    </div>
+                    <div class="profile-photo">
+                        {% if g.admin_photo %}
+                            <img src="{{ url_for('static', filename='assets/admin/' + g.admin_photo) }}"
+                                 alt="Profile Photo">
+                        {% else %}
+                            <!-- Initials fallback when no photo uploaded -->
+                            <div class="profile-initials">
+                                {{ g.admin_name[0] | upper if g.admin_name else 'A' }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <!-- END OF TOP -->
+
+            {% block right_content %}{% endblock %}
+        </div>
+        <!-- END OF RIGHT -->
+
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

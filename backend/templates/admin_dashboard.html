@@ -1,0 +1,373 @@
+{% extends "admin_base.html" %}
+{% block content %}
+
+<h1>Admin Dashboard</h1>
+
+<form class="date dashboard-date-filter" method="GET"
+      action="{{ url_for('admin_dashboard') }}">
+    <input type="date" name="date" value="{{ selected_date }}"
+           aria-label="Filter dashboard by date"
+           onchange="this.form.submit()">
+    <noscript>
+        <button type="submit">Filter</button>
+    </noscript>
+</form>
+
+<!--Total Employee-->
+<div class="insights">
+    <div class="employee">
+        <span class="material-icons-sharp">analytics</span>
+        <div class="middle">
+            <div class="left">
+                <h3>Total Employee</h3>
+                <h1>{{ total_employee }}</h1>
+            </div>
+            <div class="progress">
+                <svg>
+                    <circle cx="38" cy="38" r="36" class="bg-circle"></circle>
+                    <circle cx="38" cy="38" r="36" class="progress-circle"
+                            style="--offset: {{ circle_total_offset }};"></circle>
+                </svg>
+                <div class="number"><p>{{ total_percent }}%</p></div>
+            </div>
+        </div>
+        <small class="text-muted">Current active employees</small>
+    </div>
+
+    <div class="present">
+        <span class="material-icons-sharp">check_circle</span>
+        <div class="middle">
+            <div class="left">
+                <h3>Present</h3>
+                <h1>{{ present_today }}</h1>
+            </div>
+            <div class="progress">
+                <svg>
+                    <circle cx="38" cy="38" r="36" class="bg-circle"></circle>
+                    <circle cx="38" cy="38" r="36" class="progress-circle"
+                            style="--offset: {{ circle_present_offset }};"></circle>
+                </svg>
+                <div class="number"><p>{{ present_percent }}%</p></div>
+            </div>
+        </div>
+        <small class="text-muted">{{ selected_date_display }}</small>
+    </div>
+
+    <div class="lateness">
+        <span class="material-icons-sharp">schedule</span>
+        <div class="middle">
+            <div class="left">
+                <h3>Lateness</h3>
+                <h1>{{ late_today }}</h1>
+            </div>
+            <div class="progress">
+                <svg>
+                    <circle cx="38" cy="38" r="36" class="bg-circle"></circle>
+                    <circle cx="38" cy="38" r="36" class="progress-circle"
+                            style="--offset: {{ circle_late_offset }};"></circle>
+                </svg>
+                <div class="number"><p>{{ late_percent }}%</p></div>
+            </div>
+        </div>
+        <small class="text-muted">{{ selected_date_display }}</small>
+    </div>
+</div>
+
+<div class="attendance-records">
+    <h2>Attendance Records — {{ selected_date_display }}</h2>
+
+    <div class="att-outer">
+        <!-- Sticky thead — sits outside the scroll zone -->
+        <table class="att-table">
+            <thead>
+                <tr>
+                    <th>Employee ID</th>
+                    <th>Date</th>
+                    <th>Clock In</th>
+                    <th>Clock Out</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+        </table>
+
+        <!-- Scrollable tbody only -->
+        <div class="att-body-scroll">
+            <table class="att-table">
+                <tbody>
+                    {% for record in records %}
+                    <tr>
+                        <td>EMP{{ "%03d"|format(record.employee_id) }}</td>
+                        <td>{{ record.attendance_date }}</td>
+                        <td class="warning">{{ record.clock_in_time }}</td>
+                        <td>{{ record.clock_out_time }}</td>
+                        <td class="success">{{ record.attendance_status }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align:center; padding:2rem; color:var(--color-info-dark); font-size:0.82rem;">
+                            No attendance records found for {{ selected_date_display }}.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <a href="{{ url_for('view_attendance') }}">View All Records</a>
+</div>
+
+<style>
+/* ── Attendance Records box ── */
+.attendance-records {
+    margin-top: 1.5rem;
+}
+.attendance-records h2 {
+    margin-bottom: 0.9rem;
+}
+
+.att-outer {
+    background: var(--color-white);
+    border-radius: 1rem;
+    box-shadow: var(--box-shadow);
+    overflow: hidden;
+}
+
+/* Shared table layout */
+.att-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+/* Column widths — applied to both header and body tables */
+.att-table th:nth-child(1), .att-table td:nth-child(1) { width: 22%; }
+.att-table th:nth-child(2), .att-table td:nth-child(2) { width: 22%; }
+.att-table th:nth-child(3), .att-table td:nth-child(3) { width: 18%; }
+.att-table th:nth-child(4), .att-table td:nth-child(4) { width: 18%; }
+.att-table th:nth-child(5), .att-table td:nth-child(5) { width: 20%; }
+
+/* Header */
+.att-outer > table thead th {
+    padding: 1rem 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--color-dark);
+    text-align: center;
+    background: var(--color-white);
+    border-bottom: 1px solid var(--color-light);
+}
+
+/* Scrollable body — exactly 5 rows tall (~46px × 5) */
+.att-body-scroll {
+    max-height: 230px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-primary) transparent;
+}
+.att-body-scroll::-webkit-scrollbar       { width: 4px; }
+.att-body-scroll::-webkit-scrollbar-thumb { background: var(--color-primary); border-radius: 4px; }
+.att-body-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* Body rows */
+.att-body-scroll tbody tr {
+    transition: background 0.15s;
+}
+.att-body-scroll tbody tr:hover {
+    background: var(--color-background);
+}
+
+.att-body-scroll tbody td {
+    padding: 0.85rem 0;
+    font-size: 0.82rem;
+    color: var(--color-dark-variant);
+    text-align: center;
+    border-bottom: 1px solid var(--color-light);
+}
+.att-body-scroll tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Colour overrides matching screenshot */
+.att-body-scroll td.warning { color: var(--color-warning); font-weight: 600; }
+.att-body-scroll td.success { color: var(--color-success); font-weight: 600; }
+</style>
+
+{% endblock %}
+
+{% block right_content %}
+
+<!-- ══ RECENT UPDATES (real messages) ══ -->
+<div class="recent-updates">
+    <h2>Recent Updates
+        {% if unread_msg_count > 0 %}
+        <a href="{{ url_for('admin_messages') }}" class="dash-unread-chip">
+            {{ unread_msg_count }} new
+        </a>
+        {% endif %}
+    </h2>
+
+    <div class="updates">
+        {% for msg in recent_messages %}
+        <div class="update {% if not msg.is_read %}update-unread{% endif %}">
+            {% if msg.profile_photo %}
+                <img class="dash-msg-avatar dash-msg-avatar-img"
+                    src="{{ msg.profile_photo }}"
+                    alt="{{ msg.employee_name[0] | upper }}"
+                    onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                <div class="dash-msg-avatar dash-avatar-{{ loop.index % 5 }}" style="display:none;">
+                    {{ msg.employee_name[0] | upper }}
+                </div>
+            {% else %}
+                <div class="dash-msg-avatar dash-avatar-{{ loop.index % 5 }}">
+                    {{ msg.employee_name[0] | upper }}
+                </div>
+            {% endif %}
+            <div class="message">
+                <p>
+                    <b>{{ msg.employee_name }}</b>
+                    {{ msg.message_text | truncate(60) }}
+                </p>
+                <small class="text-muted">
+                    {% if msg.sent_at %}
+                        {{ msg.sent_at.strftime('%d %b, %I:%M %p') }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+        {% else %}
+        <div class="no-updates">
+            <span class="material-icons-sharp" style="font-size:1.8rem; color:var(--color-info-dark);">inbox</span>
+            <p style="font-size:0.8rem; color:var(--color-info-dark); margin-top:0.4rem;">No messages yet</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <a href="{{ url_for('admin_messages') }}" class="view-all-link">
+        View All Messages
+        <span class="material-icons-sharp" style="font-size:0.9rem; vertical-align:middle;">chevron_right</span>
+    </a>
+</div>
+
+<style>
+/* ── Dashboard Recent Updates tweaks ── */
+.dash-msg-avatar {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+.dash-msg-avatar-img {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--color-light);
+    flex-shrink: 0;
+}
+.dash-avatar-0 { background: var(--color-primary); }
+.dash-avatar-1 { background: var(--color-success); }
+.dash-avatar-2 { background: var(--color-warning); }
+.dash-avatar-3 { background: var(--color-danger); }
+.dash-avatar-4 { background: #8e44ad; }
+
+.update-unread {
+    border-left: 2.5px solid var(--color-primary);
+    padding-left: 0.5rem;
+    background: rgba(115,128,236,0.04);
+    border-radius: 0 var(--border-radius-2) var(--border-radius-2) 0;
+}
+.dash-unread-chip {
+    display: inline-block;
+    margin-left: 0.5rem;
+    background: var(--color-danger);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.1rem 0.5rem;
+    border-radius: var(--border-radius-1);
+    vertical-align: middle;
+}
+
+/* ── Recent Updates — no scroll, clean 3 items ── */
+.recent-updates .updates {
+    margin-bottom: 0.5rem;
+}
+.recent-updates .update {
+    border-bottom: 1px solid var(--color-light);
+    padding: 0.8rem 0;
+    transition: background 0.12s;
+    border-radius: var(--border-radius-1);
+}
+.recent-updates .update:last-child { border-bottom: none; }
+.recent-updates .update:hover { background: rgba(115,128,236,0.04); padding-left: 0.4rem; }
+
+.view-all-link {
+    display: flex;
+    align-items: center;
+    font-size: 0.78rem;
+    color: var(--color-primary);
+    font-weight: 600;
+    margin-top: 0.4rem;
+    transition: opacity 0.2s;
+}
+.view-all-link:hover { opacity: 0.75; }
+
+.no-updates {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem 0;
+}
+</style>
+
+<!------- END OF RECENT UPDATES -------->
+
+<div class="sales-analytics">
+    <h2>Employee Performance</h2>
+    <div class="item online">
+        <div class="icon"><span class="material-icons-sharp">groups</span></div>
+        <div class="right">
+            <div class="info">
+                <h3>Active Staff</h3>
+                <small class="text-muted">{{ selected_date_display }}</small>
+            </div>
+            <h5 class="success">+{{ present_percent }}%</h5>
+            <h3>{{ present_today }}</h3>
+        </div>
+    </div>
+    <div class="item offline">
+        <div class="icon"><span class="material-icons-sharp">schedule</span></div>
+        <div class="right">
+            <div class="info">
+                <h3>Late Arrivals</h3>
+                <small class="text-muted">{{ selected_date_display }}</small>
+            </div>
+            <h5 class="{% if late_percent > 20 %}danger{% else %}warning{% endif %}">{{ late_percent }}%</h5>
+            <h3>{{ late_today }}</h3>
+        </div>
+    </div>
+    <div class="item customers">
+        <div class="icon"><span class="material-icons-sharp">mark_email_unread</span></div>
+        <div class="right">
+            <div class="info">
+                <h3>Unread Messages</h3>
+                <small class="text-muted">Inbox</small>
+            </div>
+            <h5 class="{% if unread_msg_count > 0 %}danger{% else %}success{% endif %}">
+                {{ unread_msg_count }}
+            </h5>
+            <h3><a href="{{ url_for('admin_messages') }}" style="color:inherit;">View</a></h3>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

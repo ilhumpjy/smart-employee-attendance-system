@@ -1,0 +1,462 @@
+{% extends "admin_base.html" %}
+{% block content %}
+
+<div class="employee-wrapper">
+
+    <div class="employee-top">
+        <div>
+            <h1>Attendance Report</h1>
+            <p style="margin-top:0.3rem; font-size:0.82rem; color:var(--color-info-dark);">
+                Generate, preview and download employee attendance reports for any period.
+            </p>
+        </div>
+    </div>
+
+    <!-- ══ FILTER CARD ══ -->
+    <div class="report-filter-card">
+        <form method="GET" action="/admin/report" id="reportForm">
+
+            <!-- Row 1: Employee + Quick Filters -->
+            <div class="rfc-row-1">
+                <div class="rfc-group">
+                    <label class="rfc-label">
+                        <span class="material-icons-sharp" style="font-size:0.85rem;">person</span>
+                        Employee
+                    </label>
+                    <select name="employee_id" class="rfc-select" id="empSelect" required
+                            onchange="document.getElementById('reportForm').submit()">
+                        <option value="">— Select Employee —</option>
+                        {% for emp in employees %}
+                        <option value="{{ emp.employee_id }}"
+                            {% if selected_employee and selected_employee.employee_id == emp.employee_id %}selected{% endif %}>
+                            {{ emp.employee_name }}{% if emp.department %} · {{ emp.department }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="rfc-group">
+                    <label class="rfc-label">
+                        <span class="material-icons-sharp" style="font-size:0.85rem;">bolt</span>
+                        Quick Filter
+                    </label>
+                    <div class="quick-filters">
+                        <button type="button" class="qf-btn {% if active_filter == 'today' %}qf-active{% endif %}"
+                                onclick="setQuickFilter('today')">Today</button>
+                        <button type="button" class="qf-btn {% if active_filter == 'this_week' %}qf-active{% endif %}"
+                                onclick="setQuickFilter('this_week')">This Week</button>
+                        <button type="button" class="qf-btn {% if active_filter == 'this_month' %}qf-active{% endif %}"
+                                onclick="setQuickFilter('this_month')">This Month</button>
+                        <button type="button" class="qf-btn {% if active_filter == 'last_month' %}qf-active{% endif %}"
+                                onclick="setQuickFilter('last_month')">Last Month</button>
+                        <button type="button" class="qf-btn {% if active_filter == 'custom' %}qf-active{% endif %}"
+                                onclick="setQuickFilter('custom')">Custom Range</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: Date range + submit -->
+            <div class="rfc-row-2">
+                <div class="rfc-group">
+                    <label class="rfc-label">
+                        <span class="material-icons-sharp" style="font-size:0.85rem;">calendar_today</span>
+                        From Date
+                    </label>
+                    <input type="date" name="date_from" id="dateFrom"
+                           class="rfc-input" value="{{ date_from }}"
+                           {% if not selected_employee %}disabled{% endif %}>
+                </div>
+
+                <div class="rfc-group">
+                    <label class="rfc-label">
+                        <span class="material-icons-sharp" style="font-size:0.85rem;">event</span>
+                        To Date
+                    </label>
+                    <input type="date" name="date_to" id="dateTo"
+                           class="rfc-input" value="{{ date_to }}"
+                           {% if not selected_employee %}disabled{% endif %}>
+                </div>
+
+                <input type="hidden" name="active_filter" id="activeFilter" value="{{ active_filter or 'this_month' }}">
+
+                <div class="rfc-group" style="justify-content:flex-end; align-self:flex-end;">
+                    <button type="submit" class="btn-preview"
+                            {% if not selected_employee %}disabled{% endif %}>
+                        <span class="material-icons-sharp" style="font-size:1rem;">search</span>
+                        Preview Report
+                    </button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- ══ REPORT OUTPUT ══ -->
+    {% if selected_employee and records is not none %}
+
+    <!-- Period Banner -->
+    <div class="report-period-banner">
+        <div class="rpb-left">
+            <span class="material-icons-sharp" style="color:var(--color-primary); font-size:1.4rem;">description</span>
+            <div>
+                <b style="font-size:0.92rem; color:var(--color-dark);">
+                    Attendance Report &nbsp;·&nbsp; {{ selected_employee.employee_name }}
+                </b>
+                <div style="font-size:0.76rem; color:var(--color-info-dark); margin-top:0.1rem;">
+                    Period: <b style="color:var(--color-dark);">{{ date_from_display }} – {{ date_to_display }}</b>
+                    &nbsp;·&nbsp; {{ selected_employee.department or 'N/A' }}
+                    &nbsp;·&nbsp; {{ selected_employee.position or 'N/A' }}
+                </div>
+            </div>
+        </div>
+        <a href="/admin/report/download?employee_id={{ selected_employee.employee_id }}&date_from={{ date_from }}&date_to={{ date_to }}&active_filter={{ active_filter }}"
+           class="btn-download-pdf">
+            <span class="material-icons-sharp" style="font-size:1rem;">picture_as_pdf</span>
+            Download PDF
+        </a>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="report-stats">
+        <div class="rs-card">
+            <div class="rs-icon" style="background:rgba(115,128,236,0.12);">
+                <span class="material-icons-sharp" style="color:var(--color-primary);">calendar_month</span>
+            </div>
+            <div class="rs-info">
+                <small class="text-muted">Total Records</small>
+                <b>{{ summary.total_days }}</b>
+            </div>
+        </div>
+        <div class="rs-card">
+            <div class="rs-icon" style="background:rgba(65,241,182,0.12);">
+                <span class="material-icons-sharp" style="color:var(--color-success);">check_circle</span>
+            </div>
+            <div class="rs-info">
+                <small class="text-muted">Present</small>
+                <b style="color:var(--color-success);">{{ summary.present }}</b>
+            </div>
+        </div>
+        <div class="rs-card">
+            <div class="rs-icon" style="background:rgba(255,187,85,0.12);">
+                <span class="material-icons-sharp" style="color:var(--color-warning);">schedule</span>
+            </div>
+            <div class="rs-info">
+                <small class="text-muted">Late</small>
+                <b style="color:var(--color-warning);">{{ summary.late }}</b>
+            </div>
+        </div>
+        <div class="rs-card">
+            <div class="rs-icon" style="background:rgba(255,119,130,0.12);">
+                <span class="material-icons-sharp" style="color:var(--color-danger);">cancel</span>
+            </div>
+            <div class="rs-info">
+                <small class="text-muted">Absent</small>
+                <b style="color:var(--color-danger);">{{ summary.absent }}</b>
+            </div>
+        </div>
+        <div class="rs-card">
+            <div class="rs-icon" style="background:rgba(142,68,173,0.12);">
+                <span class="material-icons-sharp" style="color:#8e44ad;">timer</span>
+            </div>
+            <div class="rs-info">
+                <small class="text-muted">Avg Clock In</small>
+                <b>{{ summary.avg_clock_in or '—' }}</b>
+            </div>
+        </div>
+        <div class="rs-card">
+            <div class="rs-icon" style="background:rgba(65,241,182,0.12);">
+                <span class="material-icons-sharp" style="color:var(--color-success);">trending_up</span>
+            </div>
+            <div class="rs-info">
+                <small class="text-muted">Attendance Rate</small>
+                <b style="color:var(--color-success);">{{ summary.attendance_rate }}%</b>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Table -->
+    <div class="att-outer">
+        <table class="att-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Day</th>
+                    <th>Clock In</th>
+                    <th>Clock Out</th>
+                    <th>Hours</th>
+                    <th>Status</th>
+                    <th>Note</th>
+                </tr>
+            </thead>
+        </table>
+        <div class="att-body-scroll" style="max-height:460px;">
+            <table class="att-table">
+                <tbody>
+                    {% for record in records %}
+                    <tr>
+                        <td>{{ record.attendance_date }}</td>
+                        <td style="color:var(--color-info-dark);">{{ record.day_name }}</td>
+                        <td class="{% if record.clock_in_time %}warning{% endif %}">
+                            {{ record.clock_in_time or '—' }}
+                        </td>
+                        <td>{{ record.clock_out_time or '—' }}</td>
+                        <td style="font-weight:600;">{{ record.hours_worked or '—' }}</td>
+                        <td>
+                            <span class="status-chip status-{{ (record.attendance_status or 'absent') | lower }}">
+                                {{ record.attendance_status or 'ABSENT' }}
+                            </span>
+                        </td>
+                        <td class="note-cell">{{ record.detection_reason or '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align:center; padding:2.5rem; color:var(--color-info-dark); font-size:0.84rem;">
+                            <span class="material-icons-sharp" style="display:block; font-size:2rem; margin-bottom:0.5rem; opacity:0.4;">search_off</span>
+                            No attendance records found for this period.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="report-generated-note">
+        <span class="material-icons-sharp" style="font-size:0.85rem;">info_outline</span>
+        Generated on <b>{{ generated_on }}</b> &nbsp;·&nbsp; by <b>{{ g.admin_name }}</b>
+    </div>
+
+    {% else %}
+    <div class="report-empty">
+        {% if selected_employee %}
+            <span class="material-icons-sharp">search_off</span>
+            <p>No records found for this period.</p>
+            <small class="text-muted">Try adjusting the date range or quick filter.</small>
+        {% else %}
+            <span class="material-icons-sharp">person_search</span>
+            <p>Select an employee to get started.</p>
+            <small class="text-muted">Choose an employee from the dropdown above, then pick a date range or quick filter.</small>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+
+<style>
+.report-filter-card {
+    background: var(--color-white);
+    border-radius: var(--card-border-radius);
+    box-shadow: var(--box-shadow);
+    padding: 1.4rem 1.6rem;
+    margin-bottom: 1.3rem;
+    transition: box-shadow 300ms;
+}
+.report-filter-card:hover { box-shadow: none; }
+
+.rfc-row-1 {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 1.4rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--color-light);
+}
+.rfc-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 1rem;
+    align-items: end;
+}
+.rfc-group { display: flex; flex-direction: column; gap: 0.45rem; }
+.rfc-label {
+    display: flex; align-items: center; gap: 0.3rem;
+    font-size: 0.72rem; font-weight: 700;
+    color: var(--color-info-dark);
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+.rfc-select, .rfc-input {
+    padding: 0.6rem 0.9rem;
+    border-radius: var(--border-radius-2);
+    border: 1.5px solid var(--color-light);
+    background: var(--color-background);
+    color: var(--color-dark);
+    font-family: poppins, sans-serif; font-size: 0.82rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+}
+.rfc-select:focus, .rfc-input:focus {
+    outline: none; border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(115,128,236,0.1);
+}
+.rfc-select:disabled, .rfc-input:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Quick filter pills */
+.quick-filters { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.qf-btn {
+    padding: 0.42rem 0.85rem;
+    border-radius: var(--border-radius-2);
+    border: 1.5px solid var(--color-light);
+    background: var(--color-background);
+    color: var(--color-info-dark);
+    font-family: poppins, sans-serif; font-size: 0.76rem; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.qf-btn:hover   { border-color: var(--color-primary); color: var(--color-primary); }
+.qf-active      { background: var(--color-primary) !important; color: #fff !important; border-color: var(--color-primary) !important; }
+
+.btn-preview {
+    display: flex; align-items: center; gap: 0.4rem;
+    padding: 0.62rem 1.4rem;
+    background: var(--color-primary); color: #fff; border: none;
+    border-radius: var(--border-radius-2);
+    font-family: poppins, sans-serif; font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; transition: opacity 0.2s, transform 0.15s; white-space: nowrap;
+}
+.btn-preview:hover    { opacity: 0.88; transform: translateY(-1px); }
+.btn-preview:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* Period Banner */
+.report-period-banner {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--color-white);
+    border-radius: var(--border-radius-3);
+    padding: 1rem 1.4rem; margin-bottom: 1.1rem;
+    box-shadow: var(--box-shadow);
+    border-left: 4px solid var(--color-primary);
+    transition: box-shadow 300ms;
+}
+.report-period-banner:hover { box-shadow: none; }
+.rpb-left { display: flex; align-items: center; gap: 0.85rem; }
+
+.btn-download-pdf {
+    display: flex; align-items: center; gap: 0.4rem;
+    padding: 0.58rem 1.3rem;
+    background: var(--color-danger); color: #fff;
+    border-radius: var(--border-radius-2);
+    font-family: poppins, sans-serif; font-size: 0.8rem; font-weight: 700;
+    transition: opacity 0.2s, transform 0.15s; white-space: nowrap;
+}
+.btn-download-pdf:hover { opacity: 0.88; transform: translateY(-1px); }
+
+/* Stats */
+.report-stats { display: flex; gap: 0.85rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+.rs-card {
+    display: flex; align-items: center; gap: 0.75rem;
+    background: var(--color-white);
+    border-radius: var(--border-radius-3);
+    padding: 0.8rem 1.1rem;
+    box-shadow: var(--box-shadow);
+    flex: 1; min-width: 120px;
+    transition: box-shadow 300ms, transform 0.15s;
+}
+.rs-card:hover { box-shadow: none; transform: translateY(-2px); }
+.rs-icon {
+    width: 2.4rem; height: 2.4rem; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.rs-icon .material-icons-sharp { font-size: 1.1rem !important; }
+.rs-info small { display: block; font-size: 0.71rem; }
+.rs-info b     { font-size: 1.05rem; color: var(--color-dark); }
+
+/* Table column widths */
+.att-table th:nth-child(1), .att-table td:nth-child(1) { width: 12%; }
+.att-table th:nth-child(2), .att-table td:nth-child(2) { width: 10%; }
+.att-table th:nth-child(3), .att-table td:nth-child(3) { width: 11%; }
+.att-table th:nth-child(4), .att-table td:nth-child(4) { width: 11%; }
+.att-table th:nth-child(5), .att-table td:nth-child(5) { width: 9%;  }
+.att-table th:nth-child(6), .att-table td:nth-child(6) { width: 12%; }
+.att-table th:nth-child(7), .att-table td:nth-child(7) { width: 35%; }
+
+.status-chip {
+    display: inline-block; padding: 0.18rem 0.65rem;
+    border-radius: var(--border-radius-1);
+    font-size: 0.71rem; font-weight: 700; letter-spacing: 0.3px;
+}
+.status-present { background: rgba(65,241,182,0.12);  color: var(--color-success); }
+.status-late    { background: rgba(255,187,85,0.12);  color: var(--color-warning); }
+.status-absent  { background: rgba(255,119,130,0.12); color: var(--color-danger);  }
+
+.note-cell { font-size: 0.74rem; color: var(--color-info-dark); text-align: left; padding-left: 0.8rem !important; }
+
+.report-generated-note {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.75rem; color: var(--color-info-dark);
+    margin-top: 0.8rem; padding: 0.5rem 0;
+}
+
+.report-empty {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 5rem 2rem;
+    background: var(--color-white);
+    border-radius: var(--card-border-radius);
+    box-shadow: var(--box-shadow);
+    color: var(--color-info-dark); gap: 0.6rem; text-align: center;
+}
+.report-empty .material-icons-sharp { font-size: 3.5rem !important; opacity: 0.4; }
+.report-empty p     { font-size: 0.9rem; color: var(--color-dark); font-weight: 600; margin: 0; }
+.report-empty small { font-size: 0.78rem; }
+
+@media (max-width: 900px) {
+    .rfc-row-1 { grid-template-columns: 1fr; }
+    .rfc-row-2 { grid-template-columns: 1fr 1fr; }
+    .report-period-banner { flex-direction: column; align-items: flex-start; gap: 0.8rem; }
+}
+@media (max-width: 600px) {
+    .rfc-row-2 { grid-template-columns: 1fr; }
+}
+</style>
+
+<script>
+function todayStr() {
+    return new Date().toISOString().split("T")[0];
+}
+
+function setQuickFilter(filter) {
+    const today = new Date();
+    let dateFrom = "", dateTo = todayStr();
+
+    if (filter === "today") {
+        dateFrom = todayStr();
+        dateTo   = todayStr();
+
+    } else if (filter === "this_week") {
+        const day = today.getDay() || 7;
+        const mon = new Date(today);
+        mon.setDate(today.getDate() - day + 1);
+        dateFrom = mon.toISOString().split("T")[0];
+        dateTo   = todayStr();
+
+    } else if (filter === "this_month") {
+        dateFrom = new Date(today.getFullYear(), today.getMonth(), 1)
+                       .toISOString().split("T")[0];
+        dateTo   = todayStr();
+
+    } else if (filter === "last_month") {
+        const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const last  = new Date(today.getFullYear(), today.getMonth(), 0);
+        dateFrom = first.toISOString().split("T")[0];
+        dateTo   = last.toISOString().split("T")[0];
+
+    } else if (filter === "custom") {
+        // Just mark pill active — user fills dates manually
+        document.getElementById("activeFilter").value = "custom";
+        document.querySelectorAll(".qf-btn").forEach(b => b.classList.remove("qf-active"));
+        event.currentTarget.classList.add("qf-active");
+        return;
+    }
+
+    document.getElementById("dateFrom").value     = dateFrom;
+    document.getElementById("dateTo").value       = dateTo;
+    document.getElementById("activeFilter").value = filter;
+
+    const emp = document.getElementById("empSelect").value;
+    if (emp) {
+        document.getElementById("reportForm").submit();
+    } else {
+        document.querySelectorAll(".qf-btn").forEach(b => b.classList.remove("qf-active"));
+        event.currentTarget.classList.add("qf-active");
+    }
+}
+</script>
+
+{% endblock %}

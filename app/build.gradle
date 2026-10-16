@@ -1,0 +1,64 @@
+// app/build.gradle
+plugins {
+    id 'com.android.application'
+}
+
+android {
+
+    namespace 'my.edu.uitm.smartattendanceapp'
+
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "my.edu.uitm.smartattendanceapp"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                    'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+
+    // AndroidX core
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'org.osmdroid:osmdroid-android:6.1.18'
+    implementation libs.activity
+
+    // CameraX
+    def camerax_version = "1.3.1"
+    implementation "androidx.camera:camera-core:${camerax_version}"
+    implementation "androidx.camera:camera-camera2:${camerax_version}"
+    implementation "androidx.camera:camera-lifecycle:${camerax_version}"
+    implementation "androidx.camera:camera-view:${camerax_version}"
+
+    // Google Play Services — fused location
+    implementation 'com.google.android.gms:play-services-location:21.1.0'
+
+    // OkHttp for API calls
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    // Guava
+    implementation 'com.google.guava:guava:31.1-android'
+
+    // Profile Picture Frame
+    implementation 'de.hdodenhof:circleimageview:3.1.0'
+
+    //Password hide
+    implementation 'com.google.android.material:material:1.12.0'
+}

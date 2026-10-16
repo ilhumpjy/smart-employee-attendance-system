@@ -4,7 +4,7 @@ An Android-based employee attendance management system that integrates deep lear
 
 ## Project Poster
 
-![Smart Employee Attendance System Poster](Poster.jpeg)
+![Smart Employee Attendance System Poster](./Poster.jpeg)
 
 ## Project Overview
 

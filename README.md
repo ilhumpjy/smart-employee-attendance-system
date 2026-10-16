@@ -2,6 +2,10 @@
 
 An Android-based employee attendance management system that integrates deep learning-based face recognition with GPS geofencing to improve attendance verification, reduce proxy attendance, and support reliable attendance monitoring.
 
+## Project Poster
+
+![Smart Employee Attendance System Poster](docs/images/smart-attendance-poster.jpg)
+
 ## Project Overview
 
 Traditional attendance methods such as manual recording, fingerprint scanning, and QR code systems may have limitations in verifying employee identity and physical presence.
